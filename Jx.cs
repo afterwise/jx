@@ -331,7 +331,7 @@ public unsafe struct JxIter {
 		if (t == JxTok.Bool)
 			return Convert.ToString(boolval);
 
-		return null;
+		return "Null";
 	}
 
 	Dictionary<string, object> EatObject() {
