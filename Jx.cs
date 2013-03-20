@@ -31,6 +31,7 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -322,13 +323,13 @@ public unsafe struct JxIter {
 			}
 
 		if (t == JxTok.Int)
-			return System.Convert.ToString(intval);
+			return Convert.ToString(intval);
 
 		if (t == JxTok.Float)
-			return System.Convert.ToString(floatval);
+			return Convert.ToString(floatval);
 
 		if (t == JxTok.Bool)
-			return System.Convert.ToString(boolval);
+			return Convert.ToString(boolval);
 
 		return null;
 	}
@@ -544,9 +545,9 @@ public class JxFmt {
 
 	public JxFmt Value(object o) {
 		if (o is float || o is double)
-			Value(System.Convert.ToSingle(o));
+			Value(Convert.ToSingle(o));
 		else if (o is int || o is long)
-			Value(System.Convert.ToInt64(o));
+			Value(Convert.ToInt64(o));
 		else if (o is string)
 			Value((string) o);
 		else if (o is Dictionary<string, object>)
