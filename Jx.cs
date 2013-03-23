@@ -200,7 +200,7 @@ public unsafe struct JxIter {
 				goto case '+';
 
 			case '+':
-				if (wpos != 0)
+				if (lpos != rpos)
 					return JxTok.EOF;
 
 				rpos++;
