@@ -112,7 +112,7 @@ public unsafe struct JxIter {
 				switch (s[rpos]) {
 				case '"':
 					rpos++;
-					rs[wpos++] = '\0';
+					rs[wpos] = '\0';
 					return JxTok.Str;
 
 				case '\\':
