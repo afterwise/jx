@@ -49,12 +49,14 @@ public enum JxTok {
 
 public unsafe struct JxIter {
 
+	public const int smax = 1024;
+
 	public int rpos;
 	public int wpos;
 	public int depth;
 	public string json;
 
-	public fixed char strval[1024];
+	public fixed char strval[smax];
 	public long intval;
 	public float floatval;
 	public bool boolval;
@@ -106,7 +108,7 @@ public unsafe struct JxIter {
 
 		fixed (char *rs = strval) {
 			for (;;) {
-				if (wpos == 1024)
+				if (wpos == smax)
 					return JxTok.EOF;
 
 				switch (s[rpos]) {
@@ -224,103 +226,114 @@ public unsafe struct JxIter {
 	}
 
 	public JxTok Next() {
+		fixed(char *s = json)
+			return Scan(s);
+	}
+
+	unsafe JxTok Scan(char *s) {
 		wpos = 0;
 		intval = 0;
 		floatval = 0f;
 		boolval = false;
 
-		fixed(char *s = json) {
-			for (;;) {
-				switch (s[rpos]) {
-				case '{':
-					rpos++;
-					depth++;
-					return JxTok.Object;
+		for (;;)
+			switch (s[rpos]) {
+			case '{':
+				rpos++;
+				depth++;
+				return JxTok.Object;
 
-				case '[':
-					rpos++;
-					depth++;
-					return JxTok.Array;
+			case '[':
+				rpos++;
+				depth++;
+				return JxTok.Array;
 
-				case '}':
-				case ']':
-					rpos++;
-					depth--;
-					return JxTok.End;
+			case '}':
+			case ']':
+				rpos++;
+				depth--;
+				return JxTok.End;
 
-				case '"':
-					return EatStr(s);
+			case '"':
+				return EatStr(s);
 
-				case '0':
-				case '1':
-				case '2':
-				case '3':
-				case '4':
-				case '5':
-				case '6':
-				case '7':
-				case '8':
-				case '9':
-				case '-':
-				case '+':
-					return EatNum(s);
+			case '0':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
+			case '-':
+			case '+':
+				return EatNum(s);
 
-				case 't':
-					if (EatSym("true")) {
-						boolval = true;
-						return JxTok.Bool;
-					}
-
-					return JxTok.EOF;
-
-				case 'f':
-					if (EatSym("false"))
-						return JxTok.Bool;
-
-					return JxTok.EOF;
-
-				case 'n':
-					if (EatSym("null"))
-						return JxTok.Null;
-
-					return JxTok.EOF;
-
-				case ' ':
-				case '\t':
-				case '\f':
-				case '\r':
-				case '\n':
-				case ',':
-				case ':':
-					rpos++;
-					break;
-
-				default:
-					return JxTok.EOF;
+			case 't':
+				if (EatSym("true")) {
+					boolval = true;
+					return JxTok.Bool;
 				}
+
+				return JxTok.EOF;
+
+			case 'f':
+				if (EatSym("false"))
+					return JxTok.Bool;
+
+				return JxTok.EOF;
+
+			case 'n':
+				if (EatSym("null"))
+					return JxTok.Null;
+
+				return JxTok.EOF;
+
+			case ' ':
+			case '\t':
+			case '\f':
+			case '\r':
+			case '\n':
+			case ',':
+			case ':':
+				rpos++;
+				break;
+
+			default:
+				return JxTok.EOF;
 			}
+	}
+
+	public unsafe void Skip(JxTok t) {
+		if (t == JxTok.Object || t == JxTok.Array) {
+			int cur = depth;
+
+			fixed (char *s = json)
+				do t = Scan(s);
+				while (t != JxTok.EOF && depth >= cur);
 		}
 	}
 
-	public void Skip(JxTok t) {
-		if (t == JxTok.Object || t == JxTok.Array) {
-			int d = depth;
-
-			do t = Next();
-			while ((t > JxTok.End || depth > d) && t != JxTok.EOF);
-		}
+	public void SkipToEnd(JxTok t) {
+		if (t > JxTok.End)
+			while ((t = Next()) > JxTok.End)
+				Skip(t);
 	}
 
 	public unsafe string ToString(JxTok t) {
 		if (t == JxTok.Object || t == JxTok.Array) {
+			int p = rpos - 1;
 			Skip(t);
-			return null; // not supported
+
+			fixed (char *s = json)
+				return new String(s, p, rpos - p);
 		}
 
 		if (t == JxTok.Str)
-			fixed (char *s = strval) {
+			fixed (char *s = strval)
 				return new string(s);
-			}
 
 		if (t == JxTok.Int)
 			return Convert.ToString(intval);
