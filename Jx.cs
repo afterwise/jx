@@ -328,7 +328,7 @@ public unsafe struct JxIter {
 			Skip(t);
 
 			fixed (char *s = json)
-				return new String(s, p, rpos - p);
+				return new string(s, p, rpos - p);
 		}
 
 		if (t == JxTok.Str)
