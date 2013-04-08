@@ -350,13 +350,7 @@ public unsafe struct JxIter {
 	Dictionary<string, object> EatObject() {
 		var o = new Dictionary<string, object>();
 
-		for (JxTok t; (t = Next()) != JxTok.EOF;) {
-			if (t == JxTok.End)
-				break;
-
-			if (t != JxTok.Str)
-				continue;
-
+		for (JxTok t; (t = Next()) > JxTok.End;) {
 			string n = ToString(t);
 			o[n] = ToObject(Next());
 		}
@@ -367,12 +361,8 @@ public unsafe struct JxIter {
 	List<object> EatArray() {
 		List<object> a = new List<object>();
 
-		for (JxTok t; (t = Next()) != JxTok.EOF;) {
-			if (t == JxTok.End)
-				break;
-
+		for (JxTok t; (t = Next()) > JxTok.End;)
 			a.Add(ToObject(t));
-		}
 
 		return a;
 	}
@@ -385,9 +375,8 @@ public unsafe struct JxIter {
 			return EatArray();
 
 		if (t == JxTok.Str)
-			fixed (char *s = strval) {
+			fixed (char *s = strval)
 				return new string(s);
-			}
 
 		if (t == JxTok.Int)
 			return intval;
