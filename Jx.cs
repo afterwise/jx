@@ -546,6 +546,8 @@ public class JxFmt {
 			Value(Convert.ToSingle(o));
 		else if (o is int || o is long)
 			Value(Convert.ToInt64(o));
+		else if (o is bool)
+			Value((bool) o);
 		else if (o is string)
 			Value((string) o);
 		else if (o is Dictionary<string, object>)
