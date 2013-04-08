@@ -425,9 +425,7 @@ public class JxFmt {
 	}
 
 	void Begin(char c) {
-		if ((_mask & 1) != 0)
-			_buf.Append(',');
-
+		VanillaPrefix();
 		_buf.Append(c);
 		_mask <<= 1;
 	}
@@ -464,7 +462,7 @@ public class JxFmt {
 			_buf.Append('"');
 	}
 
-	void LiteralPrefix() {
+	void VanillaPrefix() {
 		if ((_mask & 1) != 0)
 			_buf.Append(",");
 	}
@@ -479,7 +477,7 @@ public class JxFmt {
 	}
 
 	public JxFmt Value(bool value) {
-		LiteralPrefix();
+		VanillaPrefix();
 		_buf.Append(value ? "true" : "false");
 		_mask |= 1;
 
@@ -487,7 +485,7 @@ public class JxFmt {
 	}
 
 	public JxFmt Value(long value) {
-		LiteralPrefix();
+		VanillaPrefix();
 		_buf.Append(value);
 		_mask |= 1;
 
@@ -495,7 +493,7 @@ public class JxFmt {
 	}
 
 	public JxFmt Value(float value) {
-		LiteralPrefix();
+		VanillaPrefix();
 		_buf.Append(value);
 		_mask |= 1;
 
@@ -512,7 +510,7 @@ public class JxFmt {
 	}
 
 	public JxFmt Value(JxFmt j) {
-		LiteralPrefix();
+		VanillaPrefix();
 		_buf.Append(j.ToString());
 		_mask |= 1;
 
@@ -520,7 +518,6 @@ public class JxFmt {
 	}
 
 	public JxFmt Value(Dictionary<string, object> d) {
-		LiteralPrefix();
 		BeginObject();
 
 		foreach (var kv in d)
@@ -533,7 +530,6 @@ public class JxFmt {
 	}
 
 	public JxFmt Value(List<object> l) {
-		LiteralPrefix();
 		BeginArray();
 
 		foreach (var v in l)
@@ -563,7 +559,7 @@ public class JxFmt {
 	}
 
 	public JxFmt Null() {
-		LiteralPrefix();
+		VanillaPrefix();
 		_buf.Append("null");
 		_mask |= 1;
 
