@@ -396,9 +396,11 @@ public class JxFmt {
 
 	static JxFmt() {
 		_pool.Push(new JxFmt());
-		_pool.Push(new JxFmt());
-		_pool.Push(new JxFmt());
-		_pool.Push(new JxFmt());
+	}
+
+	public static void AddToPool(int n) {
+		for (int i = 0; i < n; ++i)
+			_pool.Push(new JxFmt());
 	}
 
 	public static JxFmt Acquire() {
