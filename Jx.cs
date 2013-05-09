@@ -33,6 +33,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 
 public enum JxTok {
@@ -336,13 +337,13 @@ public unsafe struct JxIter {
 				return new string(s);
 
 		if (t == JxTok.Int)
-			return Convert.ToString(intval);
+			return Convert.ToString(intval, CultureInfo.InvariantCulture);
 
 		if (t == JxTok.Float)
-			return Convert.ToString(floatval);
+			return Convert.ToString(floatval, CultureInfo.InvariantCulture);
 
 		if (t == JxTok.Bool)
-			return Convert.ToString(boolval);
+			return Convert.ToString(boolval, CultureInfo.InvariantCulture);
 
 		return "Null";
 	}
@@ -545,9 +546,9 @@ public class JxFmt {
 
 	public JxFmt Value(object o) {
 		if (o is float || o is double)
-			Value(Convert.ToSingle(o));
+			Value(Convert.ToSingle(o, CultureInfo.InvariantCulture));
 		else if (o is int || o is long)
-			Value(Convert.ToInt64(o));
+			Value(Convert.ToInt64(o, CultureInfo.InvariantCulture));
 		else if (o is bool)
 			Value((bool) o);
 		else if (o is string)
