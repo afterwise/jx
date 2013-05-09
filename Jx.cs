@@ -35,7 +35,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
-using System.Threading;
 
 public enum JxTok {
 	EOF,
@@ -406,24 +405,14 @@ public class JxFmt {
 	}
 
 	public static JxFmt Acquire() {
-		var j = _pool.Pop();
-		var t = Thread.CurrentThread;
-
-		j._info = t.CurrentCulture;
-		t.CurrentCulture = CultureInfo.InvariantCulture;
-
-		return j;
+		return _pool.Pop();
 	}
 
 	public static void Release(JxFmt j) {
-		var t = Thread.CurrentThread;
-		t.CurrentCulture = j._info;
-
 		j.Clear();
 		_pool.Push(j);
 	}
 
-	CultureInfo _info;
 	StringBuilder _buf;
 	ulong _mask; // 64 levels or bust
 
@@ -508,7 +497,7 @@ public class JxFmt {
 
 	public JxFmt Value(float value) {
 		VanillaPrefix();
-		_buf.Append(value);
+		_buf.AppendFormat(CultureInfo.InvariantCulture, "{0}", value);
 		_mask |= 1;
 
 		return this;
@@ -557,9 +546,9 @@ public class JxFmt {
 
 	public JxFmt Value(object o) {
 		if (o is float || o is double)
-			Value(Convert.ToSingle(o));
+			Value(Convert.ToSingle(o, CultureInfo.InvariantCulture));
 		else if (o is int || o is long)
-			Value(Convert.ToInt64(o));
+			Value(Convert.ToInt64(o, CultureInfo.InvariantCulture));
 		else if (o is bool)
 			Value((bool) o);
 		else if (o is string)
