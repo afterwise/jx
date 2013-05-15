@@ -88,17 +88,15 @@ public unsafe struct JxIter {
 		return true;
 	}
 
-	bool EatSym(string t) {
+	bool EatSym(char *s, string t) {
 		int n = t.Length;
 
-		fixed (char *s = json) {
-			for (int i = 0; i < n; ++i)
-				if (s[i + rpos] != t[i])
-					return false;
-
-			if (s[rpos + n] >= 'a' && s[rpos + n] <= 'z')
+		for (int i = 0; i < n; ++i)
+			if (s[rpos + i] != t[i])
 				return false;
-		}
+
+		if (s[rpos + n] >= 'a' && s[rpos + n] <= 'z')
+			return false;
 
 		rpos += n;
 		return true;
@@ -210,13 +208,16 @@ public unsafe struct JxIter {
 				break;
 
 			default:
-				if (t == JxTok.Float && intval > 0) {
-					long x = 1;
+				if (t == JxTok.Float) {
+					if (intval > 0) {
+						long x = 1;
 
-					for (int i = 0; i < rpos - lpos; ++i)
-						x *= 10;
+						for (int i = 0; i < rpos - lpos; ++i)
+							x *= 10;
 
-					floatval += (float) intval / (float) x;
+						floatval += (float) intval / (float) x;
+					}
+
 					floatval *= sgn;
 				} else
 					intval *= sgn;
@@ -273,7 +274,7 @@ public unsafe struct JxIter {
 				return EatNum(s);
 
 			case 't':
-				if (EatSym("true")) {
+				if (EatSym(s, "true")) {
 					boolval = true;
 					return JxTok.Bool;
 				}
@@ -281,13 +282,13 @@ public unsafe struct JxIter {
 				return JxTok.EOF;
 
 			case 'f':
-				if (EatSym("false"))
+				if (EatSym(s, "false"))
 					return JxTok.Bool;
 
 				return JxTok.EOF;
 
 			case 'n':
-				if (EatSym("null"))
+				if (EatSym(s, "null"))
 					return JxTok.Null;
 
 				return JxTok.EOF;
@@ -343,9 +344,9 @@ public unsafe struct JxIter {
 			return Convert.ToString(floatval, CultureInfo.InvariantCulture);
 
 		if (t == JxTok.Bool)
-			return Convert.ToString(boolval, CultureInfo.InvariantCulture);
+			return boolval ? "true" : "false";
 
-		return "Null";
+		return "null";
 	}
 
 	Dictionary<string, object> EatObject() {
@@ -546,9 +547,9 @@ public class JxFmt {
 
 	public JxFmt Value(object o) {
 		if (o is float || o is double)
-			Value(Convert.ToSingle(o, CultureInfo.InvariantCulture));
+			Value(Convert.ToSingle(o));
 		else if (o is int || o is long)
-			Value(Convert.ToInt64(o, CultureInfo.InvariantCulture));
+			Value(Convert.ToInt64(o));
 		else if (o is bool)
 			Value((bool) o);
 		else if (o is string)
