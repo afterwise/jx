@@ -48,8 +48,17 @@ public enum JxTok {
 	Null
 }
 
-public unsafe struct JxIter {
+public enum JxAccess {
+	Random,
+	Linear
+}
 
+public struct JxProp {
+	public string key;
+	public object val;
+}
+
+public unsafe struct JxIter {
 	public const int smax = 1024;
 
 	public int rpos;
@@ -349,32 +358,43 @@ public unsafe struct JxIter {
 		return "null";
 	}
 
-	Dictionary<string, object> EatObject() {
+	object EatRandomAccessObject() {
 		var o = new Dictionary<string, object>();
 
 		for (JxTok t; (t = Next()) > JxTok.End;) {
 			string n = ToString(t);
-			o[n] = ToObject(Next());
+			o[n] = ToObject(Next(), JxAccess.Random);
 		}
 
 		return o;
 	}
 
-	List<object> EatArray() {
+	object EatLinearAccessObject() {
+		var o = new List<JxProp>();
+
+		for (JxTok t; (t = Next()) > JxTok.End;) {
+			string n = ToString(t);
+			o.Add(new JxProp {key = n, val = ToObject(Next(), JxAccess.Linear)});
+		}
+
+		return o;
+	}
+
+	object EatArray(JxAccess x) {
 		List<object> a = new List<object>();
 
 		for (JxTok t; (t = Next()) > JxTok.End;)
-			a.Add(ToObject(t));
+			a.Add(ToObject(t, x));
 
 		return a;
 	}
 
-	public unsafe object ToObject(JxTok t) {
+	public unsafe object ToObject(JxTok t, JxAccess x) {
 		if (t == JxTok.Object)
-			return EatObject();
+			return x == JxAccess.Random ? EatRandomAccessObject() : EatLinearAccessObject();
 
 		if (t == JxTok.Array)
-			return EatArray();
+			return EatArray(x);
 
 		if (t == JxTok.Str)
 			fixed (char *s = strval)
@@ -521,11 +541,23 @@ public class JxFmt {
 		return this;
 	}
 
-	public JxFmt Value(Dictionary<string, object> d) {
+	public JxFmt Value(Dictionary<string, object> o) {
 		BeginObject();
 
-		foreach (var kv in d)
-			Name(kv.Key).Value(kv.Value);
+		foreach (var p in o)
+			Name(p.Key).Value(p.Value);
+
+		EndObject();
+		_mask |= 1;
+
+		return this;
+	}
+
+	public JxFmt Value(List<JxProp> o) {
+		BeginObject();
+
+		foreach (var p in o)
+			Name(p.key).Value(p.val);
 
 		EndObject();
 		_mask |= 1;
@@ -554,10 +586,12 @@ public class JxFmt {
 			Value((bool) o);
 		else if (o is string)
 			Value((string) o);
-		else if (o is Dictionary<string, object>)
-			Value((Dictionary<string, object>) o);
 		else if (o is List<object>)
 			Value((List<object>) o);
+		else if (o is List<JxProp>)
+			Value((List<JxProp>) o);
+		else if (o is Dictionary<string, object>)
+			Value((Dictionary<string, object>) o);
 		else
 			Null();
 
