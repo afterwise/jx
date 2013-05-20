@@ -35,6 +35,16 @@ public class Test {
 			if (jx.Next() == JxTok.Object)
 				DumpObject(ref jx);
 		}
+
+		s = @"{""foo"":12.3e2,""bar"":46e-3,""quux"":""foo\u007e\u0040quux""}";
+		Console.WriteLine(s);
+
+		{
+			var jx = new JxIter(s);
+
+			if (jx.Next() == JxTok.Object)
+				DumpObject(ref jx);
+		}
 	}
 
 	static void DumpObject(ref JxIter jx) {

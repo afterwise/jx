@@ -162,6 +162,44 @@ public unsafe struct JxIter {
 						rs[wpos++] = '\t';
 						break;
 
+					case 'u':
+						{
+							byte *x = stackalloc byte[128];
+							x['0'] = 0x0;
+							x['1'] = 0x1;
+							x['2'] = 0x2;
+							x['3'] = 0x3;
+							x['4'] = 0x4;
+							x['5'] = 0x5;
+							x['6'] = 0x6;
+							x['7'] = 0x7;
+							x['8'] = 0x8;
+							x['9'] = 0x9;
+							x['A'] = 0xa;
+							x['B'] = 0xb;
+							x['C'] = 0xc;
+							x['D'] = 0xd;
+							x['E'] = 0xe;
+							x['F'] = 0xf;
+							x['a'] = 0xa;
+							x['b'] = 0xb;
+							x['c'] = 0xc;
+							x['d'] = 0xd;
+							x['e'] = 0xe;
+							x['f'] = 0xf;
+
+							var e = Encoding.Unicode;
+
+							byte *b = stackalloc byte[2];
+							b[0] = (byte) ((x[s[rpos + 3] & 0x7f] << 4) + x[s[rpos + 4] & 0x7f]);
+							b[1] = (byte) ((x[s[rpos + 1] & 0x7f] << 4) + x[s[rpos + 2] & 0x7f]);
+							rpos += 5;
+
+							e.GetChars(b, 2, rs + wpos, 1);
+							wpos++;
+						}
+						break;
+
 					default:
 						return JxTok.EOF;
 					}
@@ -182,9 +220,10 @@ public unsafe struct JxIter {
 		var t = JxTok.Int;
 		int sgn = 1;
 		int lpos = rpos;
+		char c;
 
 		for (;;) {
-			switch (s[rpos]) {
+			switch (c = s[rpos]) {
 			case '0':
 			case '1':
 			case '2':
@@ -230,6 +269,26 @@ public unsafe struct JxIter {
 					floatval *= sgn;
 				} else
 					intval *= sgn;
+
+				if (c == 'e' || c == 'E') {
+					rpos++;
+
+					if (t == JxTok.Int)
+						floatval = intval;
+
+					intval = 0;
+
+					if (EatNum(s) != JxTok.Int)
+						return JxTok.EOF;
+
+					long x = 1;
+
+					for (int i = 0, j = (int) (intval >> 31) | 1; i != intval; i += j)
+						x *= 10;
+
+					floatval *= intval >= 0 ? (float) x : 1f / x;
+					t = JxTok.Float;
+				}
 
 				return t;
 			}
