@@ -577,7 +577,7 @@ public class JxFmt {
 
 	public JxFmt Value(float value) {
 		VanillaPrefix();
-		_buf.AppendFormat(CultureInfo.InvariantCulture, "{0}", value);
+		_buf.AppendFormat(CultureInfo.InvariantCulture, "{0:R}", value);
 		_mask |= 1;
 
 		return this;
