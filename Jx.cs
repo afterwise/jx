@@ -39,13 +39,17 @@ using System.Text;
 public enum JxTok {
 	EOF,
 	End,
+
 	Object,
 	Array,
+	Group,
+
+	Setter,
+	Sym,
 	Str,
+
 	Int,
-	Float,
-	Bool,
-	Null
+	Float
 }
 
 public enum JxAccess {
@@ -69,7 +73,6 @@ public unsafe struct JxIter {
 	public fixed char strval[smax];
 	public long intval;
 	public float floatval;
-	public bool boolval;
 
 	public JxIter(string xjson) {
 		rpos = 0;
@@ -79,7 +82,6 @@ public unsafe struct JxIter {
 
 		intval = 0;
 		floatval = 0f;
-		boolval = false;
 	}
 
 	public bool StrEq(string s) {
@@ -97,18 +99,39 @@ public unsafe struct JxIter {
 		return true;
 	}
 
-	bool EatSym(char *s, string t) {
-		int n = t.Length;
+	JxTok EatSym(char *s) {
+		char c = s[rpos];
 
-		for (int i = 0; i < n; ++i)
-			if (s[rpos + i] != t[i])
-				return false;
+		fixed (char *rs = strval) {
+			for (;;) {
+				if (wpos == smax)
+					return JxTok.EOF;
 
-		if (s[rpos + n] >= 'a' && s[rpos + n] <= 'z')
-			return false;
+				switch (c) {
+				case ' ':
+				case '\t':
+				case '\f':
+				case '\r':
+				case '\n':
+				case ',':
+				case ':':
+				case '[':
+				case '{':
+				case '(':
+				case ']':
+				case '}':
+				case ')':
+				case '"':
+					rs[wpos] = '\0';
+					return JxTok.Sym;
 
-		rpos += n;
-		return true;
+				default:
+					rs[wpos++] = c;
+					c = s[++rpos];
+					break;
+				}
+			}
+		}
 	}
 
 	JxTok EatStr(char *s) {
@@ -304,7 +327,6 @@ public unsafe struct JxIter {
 		wpos = 0;
 		intval = 0;
 		floatval = 0f;
-		boolval = false;
 
 		for (;;)
 			switch (s[rpos]) {
@@ -318,14 +340,28 @@ public unsafe struct JxIter {
 				depth++;
 				return JxTok.Array;
 
+			case '(':
+				rpos++;
+				depth++;
+				return JxTok.Group;
+
 			case '}':
 			case ']':
+			case ')':
 				rpos++;
 				depth--;
 				return JxTok.End;
 
 			case '"':
-				return EatStr(s);
+				if (EatStr(s) != JxTok.Str)
+					return JxTok.EOF;
+
+				if (s[rpos] == ':') {
+					rpos++;
+					return JxTok.Setter;
+				}
+
+				return JxTok.Str;
 
 			case '0':
 			case '1':
@@ -337,29 +373,14 @@ public unsafe struct JxIter {
 			case '7':
 			case '8':
 			case '9':
-			case '-':
-			case '+':
 				return EatNum(s);
 
-			case 't':
-				if (EatSym(s, "true")) {
-					boolval = true;
-					return JxTok.Bool;
-				}
+			case '-':
+			case '+':
+				if ((uint) (s[rpos + 1] - '0') <= 9)
+					return EatNum(s);
 
-				return JxTok.EOF;
-
-			case 'f':
-				if (EatSym(s, "false"))
-					return JxTok.Bool;
-
-				return JxTok.EOF;
-
-			case 'n':
-				if (EatSym(s, "null"))
-					return JxTok.Null;
-
-				return JxTok.EOF;
+				goto default;
 
 			case ' ':
 			case '\t':
@@ -371,8 +392,19 @@ public unsafe struct JxIter {
 				rpos++;
 				break;
 
-			default:
+			case '\0':
 				return JxTok.EOF;
+
+			default:
+				if (EatSym(s) != JxTok.Sym)
+					return JxTok.EOF;
+
+				if (s[rpos] == ':') {
+					rpos++;
+					return JxTok.Setter;
+				}
+
+				return JxTok.Sym;
 			}
 	}
 
@@ -393,7 +425,7 @@ public unsafe struct JxIter {
 	}
 
 	public unsafe string ToString(JxTok t) {
-		if (t == JxTok.Object || t == JxTok.Array) {
+		if ((uint) (t - JxTok.Object) <= JxTok.Group - JxTok.Object) {
 			int p = rpos - 1;
 			Skip(t);
 
@@ -401,7 +433,7 @@ public unsafe struct JxIter {
 				return new string(s, p, rpos - p);
 		}
 
-		if (t == JxTok.Str)
+		if ((uint) (t - JxTok.Setter) <= JxTok.Str - JxTok.Setter)
 			fixed (char *s = strval)
 				return new string(s);
 
@@ -411,12 +443,22 @@ public unsafe struct JxIter {
 		if (t == JxTok.Float)
 			return Convert.ToString(floatval, CultureInfo.InvariantCulture);
 
-		if (t == JxTok.Bool)
-			return boolval ? "true" : "false";
-
-		return "null";
+		return null;
 	}
 
+	public void CopyNumber(out int v, JxTok t) {
+		v = t == JxTok.Int ? (int) intval : (int) floatval;
+	}
+
+	public void CopyNumber(out long v, JxTok t) {
+		v = t == JxTok.Int ? intval : (long) floatval;
+	}
+
+	public void CopyNumber(out float v, JxTok t) {
+		v = t == JxTok.Int ? (float) intval : floatval;
+	}
+
+#if JX_GRANDFATHER
 	object EatRandomAccessObject() {
 		var o = new Dictionary<string, object>();
 
@@ -465,11 +507,17 @@ public unsafe struct JxIter {
 		if (t == JxTok.Float)
 			return floatval;
 
-		if (t == JxTok.Bool)
-			return boolval;
+		if (t == JxTok.Sym) {
+			if (StrEq("true"))
+				return true;
+
+			if (StrEq("false"))
+				return false;
+		}
 
 		return null;
 	}
+#endif // JX_GRANDFATHER
 }
 
 public class JxFmt {
@@ -600,6 +648,7 @@ public class JxFmt {
 		return this;
 	}
 
+#if JX_GRANDFATHER
 	public JxFmt Value(Dictionary<string, object> o) {
 		BeginObject();
 
@@ -635,6 +684,7 @@ public class JxFmt {
 
 		return this;
 	}
+#endif
 
 	public JxFmt Value(object o) {
 		if (o is float || o is double)
@@ -645,12 +695,14 @@ public class JxFmt {
 			Value((bool) o);
 		else if (o is string)
 			Value((string) o);
+#if JX_GRANDFATHER
 		else if (o is List<object>)
 			Value((List<object>) o);
 		else if (o is List<JxProp>)
 			Value((List<JxProp>) o);
 		else if (o is Dictionary<string, object>)
 			Value((Dictionary<string, object>) o);
+#endif
 		else
 			Null();
 
