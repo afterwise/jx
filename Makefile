@@ -1,8 +1,13 @@
 
-Test.exe:
-	mcs -unsafe Jx.cs Test.cs -out:$@
+all: Test.exe DslTest.exe
+
+Test.exe: Test.cs Jx.cs
+	mcs -unsafe $^ -out:$@
+
+DslTest.exe: DslTest.cs Jx.cs
+	mcs -unsafe $^ -out:$@
 
 .PHONY: clean
 clean:
-	rm -f Test.exe
+	rm -f Test.exe DslTest.exe
 

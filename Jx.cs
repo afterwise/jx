@@ -433,9 +433,13 @@ public unsafe struct JxIter {
 				return new string(s, p, rpos - p);
 		}
 
-		if ((uint) (t - JxTok.Setter) <= JxTok.Str - JxTok.Setter)
-			fixed (char *s = strval)
-				return new string(s);
+		if ((uint) (t - JxTok.Setter) <= JxTok.Str - JxTok.Setter) {
+			if (wpos > 0)
+				fixed (char *s = strval)
+					return new string(s);
+
+			return string.Empty;
+		}
 
 		if (t == JxTok.Int)
 			return Convert.ToString(intval, CultureInfo.InvariantCulture);
@@ -705,6 +709,14 @@ public class JxFmt {
 #endif
 		else
 			Null();
+
+		return this;
+	}
+
+	public JxFmt Verbatim(string s) {
+		VanillaPrefix();
+		_buf.Append(s);
+		_mask |= 1;
 
 		return this;
 	}
