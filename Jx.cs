@@ -53,6 +53,10 @@ public struct JxProp {
 }
 
 public unsafe struct JxIter {
+#if JX_INTERNING
+	public static readonly Dictionary<int, string> interns = new Dictionary<int, string>();
+#endif
+
 	public const int smax = 1024;
 
 	public int rpos;
@@ -414,6 +418,34 @@ public unsafe struct JxIter {
 				Skip(t);
 	}
 
+#if JX_INTERNING
+	string InternString(char *c, int length) {
+		// this is copied from Mono's String.GetHashCode(),
+		// compute the hash here to avoid creating a new
+		// string instance unnecessarily
+
+		char * cc = c;
+		char * end = cc + length - 1;
+		int h = 0;
+		for (;cc < end; cc += 2) {
+			h = (h << 5) - h + *cc;
+			h = (h << 5) - h + cc [1];
+		}
+		++end;
+		if (cc < end)
+			h = (h << 5) - h + *cc;
+
+		string t;
+
+		if (!interns.TryGetValue(h, out t)) {
+			t = new string(c);
+			interns.Add(h, t);
+		}
+
+		return t;
+	}
+#endif
+
 	public unsafe string ToString(JxTok t) {
 		if ((uint) (t - JxTok.Object) <= JxTok.Group - JxTok.Object) {
 			int p = rpos - 1;
@@ -426,7 +458,11 @@ public unsafe struct JxIter {
 		if ((uint) (t - JxTok.Setter) <= JxTok.Str - JxTok.Setter) {
 			if (wpos > 0)
 				fixed (char *s = strval)
+#if JX_INTERNING
+					return InternString(s, wpos);
+#else
 					return new string(s);
+#endif
 
 			return string.Empty;
 		}
@@ -491,9 +527,17 @@ public unsafe struct JxIter {
 		if (t == JxTok.Array)
 			return EatArray(x);
 
-		if (t == JxTok.Str)
-			fixed (char *s = strval)
-				return new string(s);
+		if (t == JxTok.Str) {
+			if (wpos > 0)
+				fixed (char *s = strval)
+#if JX_INTERNING
+					return InternString(s, wpos);
+#else
+					return new string(s);
+#endif
+
+			return string.Empty;
+		}
 
 		if (t == JxTok.Int)
 			return intval;
